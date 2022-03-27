@@ -35,14 +35,32 @@ app.layout = html.Div([
     html.Div(children=[dcc.Graph(id='Pokemon pic', style={'width': '33%', 'display': 'inline-block'}),
                        dcc.Graph(id='Radar Plot', figure={}, style={'width': '33%', 'display': 'inline-block'}),
                        dcc.Graph(id='Against Type', figure={}, style={'width': '33%', 'display': 'inline-block'})
-                       ])
+                       ]),
+    html.Br(),
+    html.H1('Pokemon Generation Analysis', style={'text-align': 'center'}),
+    html.Div(children=[dcc.Graph(id='Count of Generation', style={'width': '50%', 'display': 'inline-block'}),
+                       dcc.Graph(id='Type Heatmap', style={'width': '50%', 'display': 'inline-block'}),
+                       ]),
+    html.Br(),
+    html.Div(children=[dcc.Graph(id='Base Total Distribution', style={'width': '33%', 'display': 'inline-block'}),
+                       dcc.Graph(id='Capture Rate Distribution', figure={}, style={'width': '33%', 'display': 'inline-block'}),
+                       dcc.Graph(id='Base Total vs Capture Rate', figure={}, style={'width': '33%', 'display': 'inline-block'})
+                       ]),
+    
+
 ])
 
 
 @app.callback(
     [Output(component_id='Pokemon pic', component_property='figure'),
      Output(component_id='Radar Plot', component_property='figure'),
-     Output(component_id='Against Type', component_property='figure')],
+     Output(component_id='Against Type', component_property='figure'),
+     Output(component_id='Count of Generation', component_property='figure'),
+     Output(component_id='Type Heatmap', component_property='figure'),
+     Output(component_id='Base Total Distribution', component_property='figure'),
+     Output(component_id='Capture Rate Distribution', component_property='figure'),
+     Output(component_id='Base Total vs Capture Rate', component_property='figure'),
+     ],
     [Input(component_id='Pokemon_Name', component_property='value')]
 )
 def update_output(Pokemon):
@@ -74,7 +92,55 @@ def update_output(Pokemon):
     # fig_t = px.line_polar(tmp_t, r='r', theta='theta', line_close=True)
     # fig_t.update_traces(fill='toself')
 
-    return fig, fig_r, fig_t
+    ############### generations ##################
+    # count of generations
+    df_generation = df.pivot_table(index=['generation', 'is_legendary'], 
+                               values='name', aggfunc=len)
+    df_generation = df_generation.reset_index()
+    df_generation.columns = ['Generation', 'Is Legendary', 'Count of Pokemon']
+    df_generation['Is Legendary'] = df_generation['Is Legendary'].astype(str)
+    fig_4 = px.bar(df_generation, x="Generation", y="Count of Pokemon", 
+                color="Is Legendary")
+
+    # type breakdown in each generation
+    df_5 = df.pivot_table(index=['generation', 'type1'], 
+                                values=['name', 'base_total'], 
+                                aggfunc={'name':len, 'base_total': np.mean})
+    df_5 = df_5.reset_index()
+    df_5.columns = ['Generation', 'Primary Type', 'Avg Base Total', 'Count of Pokemon']
+    fig_5 = px.treemap(df_5, path=[px.Constant('Pokemon world'), 'Generation', 'Primary Type'], 
+                    values='Count of Pokemon',
+                    color='Avg Base Total',
+                    )
+
+    # base total distribution in each generation
+    df_6 = df[['generation', 'base_total', 'is_legendary']]
+    df_6.columns = ['Generation', 'Base Total', 'Is Legendary']
+    fig_6 = px.box(df_6, x="Generation", y="Base Total", points="all",
+                color="Is Legendary")
+
+    # base total distribution in each generation
+    df_7 = df[['generation', 'capture_rate', 'is_legendary']]
+    df_7.columns = ['Generation', 'Capture Rate', 'Is Legendary']
+    df_7['Generation'] = df_7['Generation'].astype(int)
+    df_7 = df_7.sort_values(by='Capture Rate')
+    df_7['Capture Rate'] = df_7['Capture Rate'].replace({'30 (Meteorite)255 (Core)': 30})
+    df_7['Capture Rate'] = df_7['Capture Rate'].astype(int)
+    fig_7 = px.box(df_7, x="Generation", y="Capture Rate", #points="all",
+                color="Is Legendary"
+                )
+
+    # capture rate vs base total in each generation
+    df_8 = df[['generation', 'capture_rate', 'is_legendary', 'base_total', 'name']]
+    df_8.columns = ['Generation', 'Capture Rate', 'Is Legendary', 'Base Total', 'Name']
+    df_8['Generation'] = df_8['Generation'].astype(str)
+    df_8['Capture Rate'] = df_8['Capture Rate'].replace({'30 (Meteorite)255 (Core)': 30})
+    df_8['Capture Rate'] = df_8['Capture Rate'].astype(int)
+    fig_8 = px.scatter(df_8, x="Capture Rate", y="Base Total", 
+                    hover_data=['Name'], color='Generation')
+
+
+    return fig, fig_r, fig_t, fig_4, fig_5, fig_6, fig_7, fig_8
 
 
 if __name__ == '__main__':
