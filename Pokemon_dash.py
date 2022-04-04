@@ -1,9 +1,8 @@
 import pandas as pd
 import numpy as np
 import plotly.express as px
-
+import os
 from PIL import Image
-
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output
 
@@ -21,6 +20,7 @@ df_t = pd.concat([df['name'], df_t], axis=1)
 # add picture
 
 app = Dash(__name__)
+
 
 # Design the layout of the dash board
 app.layout = html.Div([
@@ -42,11 +42,21 @@ app.layout = html.Div([
                        dcc.Graph(id='Type Heatmap', style={'width': '50%', 'display': 'inline-block'}),
                        ]),
     html.Br(),
-    html.Div(children=[dcc.Graph(id='Base Total Distribution', style={'width': '33%', 'display': 'inline-block'}),
-                       dcc.Graph(id='Capture Rate Distribution', figure={}, style={'width': '33%', 'display': 'inline-block'}),
-                       dcc.Graph(id='Base Total vs Capture Rate', figure={}, style={'width': '33%', 'display': 'inline-block'})
+    # html.Div(children=[dcc.Graph(id='Base Total Distribution', style={'width': '33%', 'display': 'inline-block'}),
+    #                    dcc.Graph(id='Capture Rate Distribution', figure={}, style={'width': '33%', 'display': 'inline-block'}),
+    #                    dcc.Graph(id='Base Total vs Capture Rate', figure={}, style={'width': '33%', 'display': 'inline-block'})
+    #                    ]),
+    html.Div(children=[dcc.Graph(id='Base Total Distribution', style={'width': '50%', 'display': 'inline-block'}),
+                       dcc.Graph(id='Median Attributes Heatmap', style={'width': '50%', 'display': 'inline-block'}),
                        ]),
-    
+    html.Br(),
+    html.Div(children=[dcc.Graph(id='Capture Rate Distribution', figure={}, style={'width': '50%', 'display': 'inline-block'}),
+                       dcc.Graph(id='Base Total vs Capture Rate', figure={}, style={'width': '50%', 'display': 'inline-block'})
+                       ]),
+
+    html.Br(),
+    html.Br(),
+    html.Br(),
 
 ])
 
@@ -58,6 +68,7 @@ app.layout = html.Div([
      Output(component_id='Count of Generation', component_property='figure'),
      Output(component_id='Type Heatmap', component_property='figure'),
      Output(component_id='Base Total Distribution', component_property='figure'),
+     Output(component_id='Median Attributes Heatmap', component_property='figure'),
      Output(component_id='Capture Rate Distribution', component_property='figure'),
      Output(component_id='Base Total vs Capture Rate', component_property='figure'),
      ],
@@ -67,13 +78,28 @@ def update_output(Pokemon):
     dff_p = df_p.copy()
 
     dff_p = dff_p[dff_p['name'] == Pokemon] # get the target pokemon info
-
     dff_index = int(dff_p['pokedex_number'].values) # get the index of pokemon info
+    
+    
+    df_selected_pokemon = df[df['name'] == Pokemon].iloc[0] 
+    selected_generation = df_selected_pokemon['generation']
+    selected_type1 = df_selected_pokemon['type1']
+    selected_type2 = df_selected_pokemon['type2']
+    
+
+    print('current pokemon: ', Pokemon)
+ 
     img_path = ROOT + str(dff_index) + '.jpg'
 
-    img = np.array(Image.open(img_path))
+    if os.path.isfile(img_path):
+        img = np.array(Image.open(img_path))
+    else:
+        img = np.array(Image.open(ROOT + 'image_not_found.jpg'))
+    
+    
     fig = px.imshow(img)
-    fig.update_layout(coloraxis_showscale=False)
+    fig.update_layout(coloraxis_showscale=False, 
+                    xaxis_title="Generation {}, Type: {}".format(selected_generation, selected_type1.capitalize()),)
     fig.update_xaxes(showticklabels=False)
     fig.update_yaxes(showticklabels=False)
 
@@ -99,8 +125,20 @@ def update_output(Pokemon):
     df_generation = df_generation.reset_index()
     df_generation.columns = ['Generation', 'Is Legendary', 'Count of Pokemon']
     df_generation['Is Legendary'] = df_generation['Is Legendary'].astype(str)
+
+    # dynamic border width
+    fig_4_border_width = [0.5,0.5,0.5,0.5,0.5,0.5,0.5]
+    fig_4_border_color = ['white','white','white','white','white','white','white']
+    
+    fig_4_border_width[int(selected_generation) - 1] = 5
+    fig_4_border_color[int(selected_generation) - 1] = 'black'
+
     fig_4 = px.bar(df_generation, x="Generation", y="Count of Pokemon", 
-                color="Is Legendary")
+                color="Is Legendary") #, color_discrete_sequence=barColor                
+    fig_4.update_traces(#marker_color='rgb(158,202,225)', 
+                marker_line_color=fig_4_border_color,
+                marker_line_width=fig_4_border_width, opacity=0.8)
+
 
     # type breakdown in each generation
     df_5 = df.pivot_table(index=['generation', 'type1'], 
@@ -118,15 +156,36 @@ def update_output(Pokemon):
     df_6.columns = ['Generation', 'Base Total', 'Is Legendary']
     fig_6 = px.box(df_6, x="Generation", y="Base Total", points="all",
                 color="Is Legendary")
+    
+    # fig_6.update_layout(marker_color=[['rgb(158,202,225)', '#FF4136'] ,['rgb(158,202,225)', '#FF4136'] ,
+    #                                 ['rgb(158,202,225)', '#FF4136'] ,['rgb(158,202,225)', '#FF4136'] ,
+    #                                 ['rgb(158,202,225)', '#FF4136'] ,['rgb(158,202,225)', '#FF4136'] ,
+    #                                 ['rgb(158,202,225)', '#FF4136']])
+    # fig_6.update_traces(#marker_color='rgb(158,202,225)', 
+    #             marker_line_color=fig_4_border_color,
+    #             marker_line_width=fig_4_border_width, opacity=0.8)
 
-    # base total distribution in each generation
+
+    # 'rgba(93, 164, 214, 0.5)'
+    # marker_color='#FF4136'
+    # marker_color='#FF851B'
+
+
+    # Median of Attributes by Type of Non-legendary Pokémon
+    df_9 = df.rename(columns={'generation': 'Generation'}).groupby(
+                ['Generation']).median()[["attack", "sp_attack", "defense", 
+                "sp_defense", "hp", "speed"]]  #, "base_total"
+    df_9 = df_9.rename(columns={'generation': 'Generation'})
+    fig_9 = px.imshow(df_9, text_auto=True)
+
+    # capture rate distribution in each generation
     df_7 = df[['generation', 'capture_rate', 'is_legendary']]
     df_7.columns = ['Generation', 'Capture Rate', 'Is Legendary']
     df_7['Generation'] = df_7['Generation'].astype(int)
     df_7 = df_7.sort_values(by='Capture Rate')
     df_7['Capture Rate'] = df_7['Capture Rate'].replace({'30 (Meteorite)255 (Core)': 30})
     df_7['Capture Rate'] = df_7['Capture Rate'].astype(int)
-    fig_7 = px.box(df_7, x="Generation", y="Capture Rate", #points="all",
+    fig_7 = px.box(df_7, x="Generation", y="Capture Rate", points="all",
                 color="Is Legendary"
                 )
 
@@ -140,7 +199,7 @@ def update_output(Pokemon):
                     hover_data=['Name'], color='Generation')
 
 
-    return fig, fig_r, fig_t, fig_4, fig_5, fig_6, fig_7, fig_8
+    return fig, fig_r, fig_t, fig_4, fig_5, fig_6, fig_9, fig_7, fig_8
 
 
 if __name__ == '__main__':
