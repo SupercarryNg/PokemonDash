@@ -1,14 +1,16 @@
+from click import style
 import pandas as pd
 import numpy as np
 import plotly.express as px
 import os
+import dash
 from PIL import Image
 from dash import Dash, dcc, html
 from dash.dependencies import Input, Output
 
 ROOT = 'pokemon_jpg/'
 df = pd.read_csv('pokemon.csv')
-df_p = df[['pokedex_number', 'name', 'attack', 'defense', 'speed', 'sp_attack', 'sp_defense']]
+df_p = df[['pokedex_number', 'name', 'attack', 'defense', 'speed', 'sp_attack', 'sp_defense', 'hp']]
 Types = ['against_bug', 'against_dark', 'against_dragon', 'against_electric',
          'against_fairy', 'against_fight', 'against_fire', 'against_flying',
          'against_ghost', 'against_grass', 'against_ground', 'against_ice',
@@ -21,31 +23,40 @@ df_t = pd.concat([df['name'], df_t], axis=1)
 
 app = Dash(__name__)
 
+all_generation_options = {}
+for _generation in df.generation.unique():
+    temp = df[df.generation == _generation]
+    all_generation_options['Generation '+ str(_generation)] = list(temp.name.unique())
+    all_generation_options['Generation '+ str(_generation)].sort()
 
 # Design the layout of the dash board
 app.layout = html.Div([
     html.H1('Pokemon ability Plot', style={'text-align': 'center'}),
-    dcc.Input(
-            id="Pokemon_Name",
-            placeholder="Input a Pokemon Name",
-            value='Bulbasaur',
-            type='text'
+
+    html.Div(children=[
+        dcc.RadioItems(
+            id='generation-dropdown',
+            options=[{'label': k, 'value': k} for k in all_generation_options.keys()],
+            value='Generation 1',
+            style={'width': '23%', 'display': 'inline-block'}
         ),
+    ]),   
+    html.Br(),
+    dcc.Dropdown(id='names-dropdown', value='Abra',
+                searchable=True, style={'width': '33%'}),
+
     html.Br(),
     html.Div(children=[dcc.Graph(id='Pokemon pic', style={'width': '33%', 'display': 'inline-block'}),
                        dcc.Graph(id='Radar Plot', figure={}, style={'width': '33%', 'display': 'inline-block'}),
                        dcc.Graph(id='Against Type', figure={}, style={'width': '33%', 'display': 'inline-block'})
                        ]),
-    html.Br(),
+    html.Hr(),
     html.H1('Pokemon Generation Analysis', style={'text-align': 'center'}),
-    html.Div(children=[dcc.Graph(id='Count of Generation', style={'width': '50%', 'display': 'inline-block'}),
+    html.Div(children=[dcc.Graph(id='Count of Generation', style={'width': '50%', 'display': 'inline-block'},
+                        ),
                        dcc.Graph(id='Type Heatmap', style={'width': '50%', 'display': 'inline-block'}),
                        ]),
     html.Br(),
-    # html.Div(children=[dcc.Graph(id='Base Total Distribution', style={'width': '33%', 'display': 'inline-block'}),
-    #                    dcc.Graph(id='Capture Rate Distribution', figure={}, style={'width': '33%', 'display': 'inline-block'}),
-    #                    dcc.Graph(id='Base Total vs Capture Rate', figure={}, style={'width': '33%', 'display': 'inline-block'})
-    #                    ]),
     html.Div(children=[dcc.Graph(id='Base Total Distribution', style={'width': '50%', 'display': 'inline-block'}),
                        dcc.Graph(id='Median Attributes Heatmap', style={'width': '50%', 'display': 'inline-block'}),
                        ]),
@@ -53,16 +64,34 @@ app.layout = html.Div([
     html.Div(children=[dcc.Graph(id='Capture Rate Distribution', figure={}, style={'width': '50%', 'display': 'inline-block'}),
                        dcc.Graph(id='Base Total vs Capture Rate', figure={}, style={'width': '50%', 'display': 'inline-block'})
                        ]),
-
     html.Br(),
     html.Br(),
     html.Br(),
 
 ])
 
+@app.callback(
+    dash.dependencies.Output('names-dropdown', 'options'),
+    [dash.dependencies.Input('generation-dropdown', 'value')])
+def set_generation_options(selected_generation):
+    return [{'label': i, 'value': i} for i in all_generation_options[selected_generation]]
 
 @app.callback(
-    [Output(component_id='Pokemon pic', component_property='figure'),
+    dash.dependencies.Output('names-dropdown', 'value'),
+    [dash.dependencies.Input('names-dropdown', 'options')])
+def set_names_value(available_options):
+    return available_options[0]['value']
+
+# @app.callback(
+#     #Output('Base Total vs Capture Rate', 'children'),
+#     Output('names-dropdown', 'value'),
+#     Input('Base Total vs Capture Rate', 'clickData'))
+# def display_click_data(clickData):
+#     return clickData
+
+@app.callback(
+    [
+     Output(component_id='Pokemon pic', component_property='figure'),
      Output(component_id='Radar Plot', component_property='figure'),
      Output(component_id='Against Type', component_property='figure'),
      Output(component_id='Count of Generation', component_property='figure'),
@@ -72,8 +101,11 @@ app.layout = html.Div([
      Output(component_id='Capture Rate Distribution', component_property='figure'),
      Output(component_id='Base Total vs Capture Rate', component_property='figure'),
      ],
-    [Input(component_id='Pokemon_Name', component_property='value')]
+    [Input(component_id='names-dropdown', component_property='value')]
 )
+
+
+
 def update_output(Pokemon):
     dff_p = df_p.copy()
 
@@ -131,14 +163,14 @@ def update_output(Pokemon):
     fig_4_border_color = ['white','white','white','white','white','white','white']
     
     fig_4_border_width[int(selected_generation) - 1] = 5
-    fig_4_border_color[int(selected_generation) - 1] = 'black'
+    fig_4_border_color[int(selected_generation) - 1] = 'gold'
 
     fig_4 = px.bar(df_generation, x="Generation", y="Count of Pokemon", 
                 color="Is Legendary") #, color_discrete_sequence=barColor                
     fig_4.update_traces(#marker_color='rgb(158,202,225)', 
                 marker_line_color=fig_4_border_color,
                 marker_line_width=fig_4_border_width, opacity=0.8)
-
+    fig_4.update_layout(title_text='Number of Pokemons by Generation', title_x=0.5)
 
     # type breakdown in each generation
     df_5 = df.pivot_table(index=['generation', 'type1'], 
@@ -150,12 +182,14 @@ def update_output(Pokemon):
                     values='Count of Pokemon',
                     color='Avg Base Total',
                     )
+    fig_5.update_layout(title_text='Tree Map of Pokemon World by Generation', title_x=0.5)
 
     # base total distribution in each generation
     df_6 = df[['generation', 'base_total', 'is_legendary']]
     df_6.columns = ['Generation', 'Base Total', 'Is Legendary']
     fig_6 = px.box(df_6, x="Generation", y="Base Total", points="all",
                 color="Is Legendary")
+    fig_6.update_layout(title_text='Distribution of Base Total by Generation', title_x=0.5)
     
     # fig_6.update_layout(marker_color=[['rgb(158,202,225)', '#FF4136'] ,['rgb(158,202,225)', '#FF4136'] ,
     #                                 ['rgb(158,202,225)', '#FF4136'] ,['rgb(158,202,225)', '#FF4136'] ,
@@ -177,6 +211,7 @@ def update_output(Pokemon):
                 "sp_defense", "hp", "speed"]]  #, "base_total"
     df_9 = df_9.rename(columns={'generation': 'Generation'})
     fig_9 = px.imshow(df_9, text_auto=True)
+    fig_9.update_layout(title_text='Median attributes of Pokemons by Generation', title_x=0.5)
 
     # capture rate distribution in each generation
     df_7 = df[['generation', 'capture_rate', 'is_legendary']]
@@ -188,6 +223,7 @@ def update_output(Pokemon):
     fig_7 = px.box(df_7, x="Generation", y="Capture Rate", points="all",
                 color="Is Legendary"
                 )
+    fig_7.update_layout(title_text='Distribution of Capture Rate by Generation', title_x=0.5)
 
     # capture rate vs base total in each generation
     df_8 = df[['generation', 'capture_rate', 'is_legendary', 'base_total', 'name']]
@@ -197,7 +233,7 @@ def update_output(Pokemon):
     df_8['Capture Rate'] = df_8['Capture Rate'].astype(int)
     fig_8 = px.scatter(df_8, x="Capture Rate", y="Base Total", 
                     hover_data=['Name'], color='Generation')
-
+    fig_8.update_layout(title_text='Base Total vs Capture Rate', title_x=0.5)
 
     return fig, fig_r, fig_t, fig_4, fig_5, fig_6, fig_9, fig_7, fig_8
 
