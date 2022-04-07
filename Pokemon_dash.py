@@ -130,8 +130,8 @@ def update_output(Pokemon):
     
     
     fig = px.imshow(img)
-    fig.update_layout(coloraxis_showscale=False, 
-                    xaxis_title="Generation {}, Type: {}".format(selected_generation, selected_type1.capitalize()),)
+    fig.update_layout(coloraxis_showscale=False, title_x=0.5, title_y=1,
+                    title_text="Generation {}, Type: {}".format(selected_generation, selected_type1.capitalize()),)
     fig.update_xaxes(showticklabels=False)
     fig.update_yaxes(showticklabels=False)
 
@@ -140,6 +140,7 @@ def update_output(Pokemon):
          theta=dff_p.columns[2:]))
     fig_r = px.line_polar(tmp_r, r='r', theta='theta', line_close=True)
     fig_r.update_traces(fill='toself')
+    fig_r.update_layout(title_text="{}'s Base Total Breakdown".format(Pokemon), title_x=0.5, title_y=1,)
 
     dff_t = df_t.copy()
     dff_t = dff_t[dff_t['name'] == Pokemon]
@@ -147,8 +148,7 @@ def update_output(Pokemon):
          Against=dff_t.values[0][1:],
          Type=dff_t.columns[1:]))
     fig_t = px.bar_polar(tmp_t, r="Against", theta="Type",color="Against")
-    # fig_t = px.line_polar(tmp_t, r='r', theta='theta', line_close=True)
-    # fig_t.update_traces(fill='toself')
+    fig_t.update_layout(title_text="{}'s Effectiveness against Other Types".format(Pokemon), title_x=0.5, title_y=1,)
 
     ############### generations ##################
     # count of generations
