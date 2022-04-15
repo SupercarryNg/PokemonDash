@@ -345,7 +345,7 @@ def update_side_graph(idx):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, port=8052)
 
 #  Things to update
 # 1. legend of the scatter plot >>> Done

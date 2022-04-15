@@ -218,8 +218,8 @@ def update_output(Pokemon):
     df_7.columns = ['Generation', 'Capture Rate', 'Is Legendary']
     df_7['Generation'] = df_7['Generation'].astype(int)
     df_7 = df_7.sort_values(by='Capture Rate')
-    df_7['Capture Rate'] = df_7['Capture Rate'].replace({'30 (Meteorite)255 (Core)': 30})
-    df_7['Capture Rate'] = df_7['Capture Rate'].astype(int)
+    # df_7['Capture Rate'] = df_7['Capture Rate'].replace({'30 (Meteorite)255 (Core)': 30})
+    # df_7['Capture Rate'] = df_7['Capture Rate'].astype(int)
     fig_7 = px.box(df_7, x="Generation", y="Capture Rate", points="all",
                 color="Is Legendary"
                 )
@@ -229,8 +229,8 @@ def update_output(Pokemon):
     df_8 = df[['generation', 'capture_rate', 'is_legendary', 'base_total', 'name']]
     df_8.columns = ['Generation', 'Capture Rate', 'Is Legendary', 'Base Total', 'Name']
     df_8['Generation'] = df_8['Generation'].astype(str)
-    df_8['Capture Rate'] = df_8['Capture Rate'].replace({'30 (Meteorite)255 (Core)': 30})
-    df_8['Capture Rate'] = df_8['Capture Rate'].astype(int)
+    # df_8['Capture Rate'] = df_8['Capture Rate'].replace({'30 (Meteorite)255 (Core)': 30})
+    # df_8['Capture Rate'] = df_8['Capture Rate'].astype(int)
     fig_8 = px.scatter(df_8, x="Capture Rate", y="Base Total", 
                     hover_data=['Name'], color='Generation', trendline="ols")
     fig_8.update_layout(title_text='Base Total vs Capture Rate', title_x=0.5)
@@ -239,7 +239,7 @@ def update_output(Pokemon):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, port=8051)
 
 
 # Pikachu
