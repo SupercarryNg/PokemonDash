@@ -232,7 +232,7 @@ def update_output(Pokemon):
     df_8['Capture Rate'] = df_8['Capture Rate'].replace({'30 (Meteorite)255 (Core)': 30})
     df_8['Capture Rate'] = df_8['Capture Rate'].astype(int)
     fig_8 = px.scatter(df_8, x="Capture Rate", y="Base Total", 
-                    hover_data=['Name'], color='Generation')
+                    hover_data=['Name'], color='Generation', trendline="ols")
     fig_8.update_layout(title_text='Base Total vs Capture Rate', title_x=0.5)
 
     return fig, fig_r, fig_t, fig_4, fig_5, fig_6, fig_9, fig_7, fig_8
